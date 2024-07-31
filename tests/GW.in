@@ -1,0 +1,48 @@
+[General]
+DOS = ReadIn #Bethe
+NAt = 1
+HkFile = GW.hk
+mu = 0.
+beta = 40.0
+totdens = 1.0  # el/d-at
+EPSN = 1e-10
+readold = 0
+fileold = old.hdf5
+DMFTsteps = 1
+StatisticSteps = 0
+FileNamePrefix = _GWbasic
+magnetism = para
+EPSEQ = 0.02
+mixing = 0.4
+#
+GW = 1
+SGWnlFile = GW.skiw
+
+
+[Atoms]
+[[1]]
+Hamiltonian = Density # ReadUMatrix  ReadNormalUMatrix  u_matrix.dat
+Nd = 1
+Np = 0
+Nlig = 0
+Udd = 2.0
+Jdd = 0.
+Vdd = 0.
+Phonon = 0
+g_phonon = 5.477,
+omega0 = 10.,
+NSymMove = 0
+SymMove01 = None
+
+[QMC]
+Nwarmups = 4e3
+Nmeas = 1e3   #2e5
+NCorr = 2e2   #2e3
+NLegOrder = 100
+Ntau = 1000
+Niw = 2000
+truncation = 2
+
+#!TEST _GW_basic
+#!TEST _GW_two_iterations General.DMFTsteps=2
+

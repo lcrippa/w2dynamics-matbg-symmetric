@@ -1,0 +1,20 @@
+cmake_policy(SET CMP0012 NEW)
+
+SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
+find_package(PythonInterp 3.0)
+if (NOT PYTHONINTERP_FOUND)
+  find_package(PythonInterp 2.6)
+endif()
+
+include(${CMAKE_MODULE_PATH}/installviapip.cmake)
+
+install_via_pip("pylint" ERRORCODE)
+
+execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pylint cfg_converter cprun cthyb DMFT hgrep Maxent setup w2dyn
+                RESULT_VARIABLE PYLINT_EXITCODE)
+
+if (${PYLINT_EXITCODE})
+   message(FATAL_ERROR "Pylint emitted diagnostics of class error: Please fix or suppress indicated issues!")
+endif()
+

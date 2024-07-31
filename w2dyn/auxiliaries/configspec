@@ -1,0 +1,308 @@
+#this section contains the parameters for each ineq-atom
+[Atoms]
+[[__many__]]
+# Density/Coulomb/Kanamori/ReadIn/ReadUmatrix
+Hamiltonian     = option('Density','Kanamori','Coulomb','ReadUmatrix','ReadNormalUmatrix',default='Density')
+crystalfield    = float_list(default=None)      # Either spin-independent with exactly Nd + Np entries or spin-dependent with exactly twice as many entries with the spin index running faster. This parameter is used for the band centers if DOS=Bethe and is added to the diagonal of the local Hamiltonian if a single-shot calculation with cthyb is performed. Under other circumstances, this parameter does not currently have any influence on the calculation.
+# Kanamori and density interaction parameters
+Udd             = float(default=0.0)            # intra orbital interaction
+Jdd             = float(default=0.0)            # Hunds coupling
+Vdd             = float(default=0.0)            # inter orbital interaction
+# Coulomb parameters
+F0              = float(default=None)           # Slater integral for k=0 
+F2              = float(default=None)           # Slater integral for k=2
+F4              = float(default=None)           # Slater integral for k=4
+F6              = float(default=None)           # Slater integral for k=6
+# Interaction from U-matrix
+umatrix         = string(default="u_matrix.dat")
+WriteUToFile    = string(default=None)          # write U matrix used for impurity-solver-treated orbitals of this impurity to a file
+ 
+QuantumNumbers  = string(default="auto")        # Good quantum numbers, string of whitespace-separated entries "Nt" for total occupation, "Szt" for spin component, "Qzt" for singly-occupiedness per orbital, "Azt" for occupation oer spin-orbital, "Lzt" for orbital angular momentum component assuming uniformly spaced ascending values symmetric around zero for the impurity orbitals, "Jzt" for total angular momentum component, and "All" for automatic partitioning of the Hamiltonian into blocks
+Nd              = integer(default=None)         # Number of bands
+Np              = integer(default=0)
+Nlig            = integer(default=0)
+
+# interaction between d-p/p-p; only applicable if DOS=ReadIn 
+Upp             = float(default=0.0)
+Jpp             = float(default=0.0)
+Vpp             = float(default=0.0)
+Udp             = float(default=0.0)
+Jdp             = float(default=0.0)
+Uppod           = float(default=0.0)
+Jppod           = float(default=0.0)
+type            = string(default=None)
+
+# Phonon parameters
+# Warning: experimental! Advise: leave at 0!
+Phonon          = integer(default=0)            # switch for phonon interaction
+Screening       = integer(default=0)            # switch for dynamical screening
+g_phonon        = float_list(default=None)      # coupling constant
+omega0          = float_list(default=None)           # phonon frequency
+
+NSymMove    	= integer(default=0)  		# number of symmetry moves
+SymMove01       = string(default=None)          #
+SymMove02       = string(default=None)          #
+SymMove03       = string(default=None)          #
+SymMove04       = string(default=None)          #
+SymMove05       = string(default=None)          #
+
+se-shift	= float(default=1.0)
+
+occdcnumber     = float(default=None)		# for dc = trace, the dc is fixed by enforcing this 
+		  				# occupation on the atom, instead of the LDA occupation
+
+#this section contains the parameters for the QMC part
+[QMC]
+Nwarmups 	= integer(default=10000)	# # of warm up sweeps
+Nwarmups2Plus   = integer(default=-1)           # # of warm up sweeps after the first iterations if Monte Carlo configurations are reused and the given value is non-negative
+NwarmupsEta     = integer(default=None, min=0)  # # of warm up sweeps in total sampling space before each step of the eta search; as many as counted steps by default
+Nmeas 		= integer(default=10000)	# # of measurements
+NCorr 		= integer(default=100)	        # sweeps between meas
+NSeed		= integer(default=43890)	# random number seed
+NBin 		= integer(min=1, default=1)		# # of bins per core
+MaxHisto 	= integer(default=500)		# maximum histogram order
+TaudiffMax      = float(default=-1.0)           # maximum tau difference of operator pairs that may be proposed for insertion or removal
+MeasDensityMatrix = integer(default=1)
+PrintDensityMatrixBasis = integer(default=0)
+MeasExpResDensityMatrix = integer(default=0)
+MeasGiw     = integer(default=0)
+FTGiwGtau   = boolean(default=False)
+Gtau_mean_step = integer(default=0)             # measure the Monte Carlo-step resolved tau-average of the Green's function
+Gtau_mid_step = integer(default=0)             # measure the Monte Carlo-step resolved tau-average around beta/2 of the Green's function
+sign_step = integer(default=0)             # measure the Monte Carlo-step resolved configuration weight sign
+NLookup_nfft = integer(min=0, default=10000)    # size of the lookup table used for storing measurement data for fourier transformation; higher values speed up the measurement by calling NFFT less often, but will use more memory; the default value is quite memory-conserving to be safe
+EnableOuterTruncation  	= string(default='')	# 'YES' to enable truncation
+truncation  	= integer(default=1)		# # of energy levels before truncation
+EPSLANC     	= float(default=1e-15)          # Lanczos convergence
+EPSTRACEVEC    	= float(default=1e-15)          # Amplitude in the local trace
+EPSSANDWICH   	= float(default=1e-15)          # Value of one summand of the local trace
+EPSEVEC		= float(default=1e-15)
+EPSBLOCK        = float(default=1e-13)          # Threshold for entries of the Hamiltonian to be disregarded for automatic quantum number choice and automatic block partitioning, relative to the entry of the local Hamiltonian with the largest magnitude
+PercentageGlobalMove = float(min=0,max=1,default=0.005)     # percentage of global moves
+PercentageTauShiftMove = float(min=0,max=1,default=0.005)  # percentage of tau-shift moves
+PercentageOuterMove = float(min=0,max=1,default=0)  # percentage of moves potentially changing the block of the Hamiltonian whose basis states are used as outer states in the local trace among pair insertions and removals
+PercentageWormOuterMove = float(min=0,max=1,default=0)
+# Discretization
+Ntau       	= integer(min=1,default=1000)  	# # of points in tau
+Nftau       = integer(min=1,default=5000)  	# # of points in ftau
+Niw        	= integer(min=1,default=2000)	# # of matsubara freq.
+NLegMax     = integer(default=100)    	# Max order of Legendre Polys
+NLegOrder  	= integer(default=100)     	# order used 
+FourPnt     = integer(default=0)      	# 0 = no meas of 4pnt, 1 = Imaginary time, 2 = Legendre, 4 = Matsubara, 8  = Worm Matsubara
+N4tau 	= integer(min=1,default=1)     	# Number of tau bins for 4-point GF
+N4leg 	= integer(min=2,default=2)     	# Max number of Legendre coeff for 4-point GF
+N4iwf  	= integer(min=0,default=1)     	# Number of fermionic matsubaras for 4-point GF
+N4iwb   = integer(min=0,default=0)      # Number of bosonic matsubaras for 4-point GF
+N2iwb   = integer(min=0,default=100)    # Number of bosonic matsubara frequencies for 2 legged 2P GF, total box size 2*N2iwb+1
+N3iwb   = integer(min=0,default=100)    # Number of bosonic matsubara frequencies for 3 legged 2P GF, total box size 2*N3iwb+1
+N3iwf   = integer(min=0,default=100)    # Number of fermionic matsubara frequencies for 3 legged 2P GF, total box size 2*N3iwf
+
+# measurement options
+# 0: off, 1: mean only, 2: autocorrelation
+AccumGtau = integer(default=1)
+
+WriteCovMeanGiw = boolean(default=False)      # Write out the covariance of the mean of the diagonals of the Matsubara Green's function into the quantity "giw-cov"
+WriteCovMeanSigmaiw = boolean(default=False)  # Write out the covariance of the mean of the diagonals of the Matsubara self-energy function into the quantity "siw-cov"
+
+# Timing
+MeasurementTiming = integer(default=-1)
+MeasG2iw = integer(default=0)
+MeasG4iwPP = integer(default=0)
+MeasGSigmaiw = integer(default=0)
+MeasGtauDetRat = integer(default=0)
+
+Eigenbasis		 = integer(default=1)
+statesampling   = integer(default=0)
+ReuseMCConfig   = integer(default=0)
+WriteMCConfig   = boolean(default=False)
+Update_Trace    = integer(default=1)
+Nice_SelfEnergy = integer(default=0)
+meas_dm_old     = integer(default=0)
+offdiag=integer(default=0)
+full_offdiag=integer(default=0)
+offd_strength = float(min=0,max=1,default=0.0)
+flavourchange_moves = integer(default=0, min=0, max=1) # whether to use flavourchange moves instead of 4-operator moves
+
+PercentageWormInsert    = float(min=0,max=1,default=0.0)      # percentage of worm moves; default=0.0, i.e. disabled
+PercentageWormReplace   = float(min=0,max=1,default=0.0)      # pecentage of moves where a worm switches position with a hyboperator 
+WormEta                 = float(default=1.)                   # prefactor for green function space contribution; will be overwritten if WormSearchEta != 0
+WormMeasGiw             = integer(default=0)                  # flag for worm sampling - 1P Greens function in iw
+WormMeasGtau            = integer(default=0)                  # flag for worm sampling - 1P Greens function in tau
+
+WormMeasGSigmaiw        = integer(default=0)                  # flag for worm sampling - IE for Sigma
+
+WormMeasG4iw          = integer(default=0)                   # flag for worm sampling - 2P Greens function
+WormMeasH4iw          = integer(default=0)                   # flag for worm sampling - IE for H
+
+WormMeasP2iwPH        = integer(default=0)                  # 2-legged equal time Green's function ph convention
+WormMeasP2iwPP        = integer(default=0)                  # 2-legged equal time Green's funciton pp convention
+
+WormMeasP2tauPH       = integer(default=0)                  # 2-legged equal time Green's function in imaginary time
+WormMeasP2tauPP       = integer(default=0)                  # 2-legged equal time Green's function PP in imaginary time
+
+WormMeasP3iwPH        = integer(default=0)                  # 3-legged equal time Green's function ph convention
+WormMeasP3iwPP        = integer(default=0)                  # 3-legged equal time Green's funciton pp convention
+
+WormMeasQQ            = integer(default=0)                  # symmetric IE for 1P GF
+WormMeasQQtau         = integer(default=0)                  # symmetric IE for 1P GF in imaginary time
+
+WormMeasNQQdag        = integer(default=0)                  # part of symmetric IE for 2P GF
+WormMeasQQdd          = integer(default=0)                  # part of symmetric IE for 2P GF
+
+WormMeasQQQQ          = integer(default=0)                  # symmetric IE for 2P GF
+WormMeasUcaca         = integer(default=0)                  # part of symmetric IE for 2P GF
+WormMeasUcacatau      = integer(default=0)                  # part of symmetric IE for 2P GF
+WormMeasUccaa         = integer(default=0)                  # part of symmetric IE for 2P GF
+WormMeasUccaatau      = integer(default=0)                  # part of symmetric IE for 2P GF
+WormMeasQUDdag        = integer(default=0)                  # part of symmetric IE for 2P GF
+WormMeasRaman         = integer(default=0)                  # Raman diagrams
+
+WormZMeasG            = integer(default=0)                  # perform G measurement in Z-space during worm calculation
+WormCombineGiw        = integer(default=0)                  # calculate weighted average of all measured G 
+
+WormSearchEta         = integer(default=0)                  # eta-search mode: 0 = no eta search, 1 = bisection eta search, 2 = brentq eta search.
+WormSearchEtaMaxIter  = integer(default=50, min=0)          # maximum number of iterations -- i.e. count runs -- in eta search
+WormComponents        = force_list(default=None)              # worm components to be sampled for worm estimator, default -> all
+WormPHConvention      = integer(default=0)                  # flag to select bosonic channel in PH convention,  
+                                                            # 0 --> w relates to operators 1 and 4, 1--> w relates to operators 2 and 3
+ZPHConvention         = integer(default=0)                  # flag to select bosonic channel in PH convention,  
+                                                            # 0 --> w relates to operators 1 and 4, 1--> w relates to operators 2 and 3
+
+# Fourier transformation of g4iw-worm: the sampling is the same for g4iw_ph and g4iw_pp, just the FT is different.
+# Therefore it is possible to do (with the same sampling) a ph-FT and/or a pp-FT. Both G4ph and G4pp can be set to 1.
+# Convention of G4ph: (0): (v+w) tau_1 - v tau_2 + v' tau_3 - (v'+w) tau_4
+#                     (1): v tau_1 - (v-w) tau_2 + (v'-w) tau_3 - v' tau_4
+# Convention of G4pp: v tau_1 - (w-v') tau_2 + (w-v) tau_3 - v' tau_4
+G4ph                  = integer(default=1)                  # 1 -> do Fourier transform of g4iw-worm in ph channel
+G4pp                  = integer(default=0)                  # 1 -> do Fourier transform of g4iw-worm in pp channel
+nfft_mode_g4iw        = integer(default=0)  # 0: 3D NFFT.  1: 2D NFFT for each bosonic frequency
+Nbatchsize_nfft_worm  = integer(default=5000000)  # buffer size for NFFT
+
+# segment parameters
+segment=integer(default=0)
+MeasSusz=integer(default=0)
+Percentage4OperatorMove = float(min=0,max=1,default=0.005)     # percentage of global moves
+                                                              # default=0 (14), otherwise (23)
+
+MeasSsquare           = integer(default=0)                  # write S^2; note that due to planned changes this parameter may become unnecessary and be removed in a future version
+
+#this section contains all other parameters
+[General]
+#DOS flat/semicirc/ReadIn/Bethe/Bethe_in_tau
+#for the last one the self-consistency loop is done in tau
+DOS             = option('flat','semicirc','ReadIn','ReadInSO','Bethe','Bethe_in_tau','EDcheck','nano','CoulvsKan','readDelta',default='Bethe')
+HkFile          = string(default=None)          # filename of the H_k file
+muimpFile       = string(default=None)          # filename of the muimp file
+nanostructure   = string(default=None)          # filename of the H_k file
+EPSEQ           = float(default=1e-6)           # epsilon for identical atom in unit cell
+equiv           = force_list(default=None)
+
+SLURMStopFile           = boolean(default=True) # check for existence of {SLURM_JOB_ID}.stop in current directory between iters and stop if it exists
+SLURMOnlyContinueIfTime = integer(default=-1)   # continue with next iteration if estimated end time of iteration is at least this far from job end
+
+# Include GW Self-Energy
+GW              = integer(default=0)
+GW_KAverage     = integer(default=1)            # Calculation of local GW contribution - K-average or model
+
+# Include Dynamical U(w) 
+Uw              = integer(default=0)
+Uw_Mat          = integer(default=0)            # Reading real or Matsubara frequencies from Uw files
+
+EPSOFFDIAG      = float(default=1e-6)           # epsilon for checking off-diagonal Hybridisation elements
+dos_deltino     = float(default=1e-10)          # deltino for the LDA DOS calculation 
+eqmaxfreq       = float(default=10.)            # frequency cut-off for equivalence detection
+beta            = float(default=100.)           # inverse temperature
+mu              = float(default=0.0)            # chemical potential
+mu_mixing       = float(default=0.0)            # mix in old chemical potential
+half-bandwidth  = force_list(default=2.)        # half-bandwidth of the DOS
+# additional values for LDA+DMFT calculations
+NAt             = integer(default=1)
+dc              = option_or_list('anisimov','fll','fixed_fll','sc_fll','Wterm','amf','trace','siginfbar','sigzerobar',default='anisimov')
+dc_mixing       = float(default=0.0)	 	# mixing between old and new SE
+dc_dp           = integer(default=0)            # Fixint of energetic distance between d and p orbitals
+dc_dp_orbitals  = int_list(default=None)        # Specify the reference d-orbitals 
+dc_fixed_dens   = force_list(default=None)      # manually specified sums of densities per shell for fixed_fll
+Wterm_W         = float(default=0.0)
+Wterm_V         = float(default=0.0)
+Wterm_shifts    = force_list(default=None)
+siw_moments     = option('estimate', 'extract', default='estimate')
+Neps            = integer(default=1000)         # numerical integration of DOS
+
+# fix mu parameters
+mu_search       = option('nloc', 'mixer', 'kappa', 'curvefit', default='nloc')  # option mixer uses the mixer for mu search if the mixer is capable of solving general root finding problems; behavior of options kappa and curvefit is experimental and may change in later versions
+target          = option('ntot', 'Z', default='ntot')
+totdens 	= float(default=0.)		# # of electrons in system per atom
+targetZ         = float(default=0.)
+searchparam     = option('mu', 'U', default='mu')
+mulobound       = float(default=None)
+muhibound       = float(default=None)
+EPSLDAN		= float(default=0.00001)	# eps between lda dens and totdens readjust mu
+EPSMATSN	= float(default=5e-6)		# eps between model and num tail to trunc
+EPSN 		= float(default=0.000)		# eps between mats sum and totdens readjust mu
+
+# parameters useful for multiple mu search options
+mu_n_load_old = boolean(default=False)          # load mu and n from old file
+
+# parameters for mu search option kappa
+kappa_force_sign = float(default=None)          # set to positive or negative number to force positive resp. negative kappa
+initial_last_mudiff = float(default=None)       # override the initial value of last_mudiff; note that the default value of None sets no override while 0.0 sets last_mudiff to None, causing the first step to be unrestricted when continuing from an old file, which might be useful if other calculation parameters have changed
+
+# parameters for mu search curvefit
+curvefit_startat = integer(default=5, min=0)
+curvefit_minhistory = integer(default=5, min=0)
+curvefit_maxhistory = integer(default=100, min=0)
+
+# parameters for mu search mixer
+mu_residual_factor = float(default=None)        # The factor with which the difference of the current value of the targeted quantity and its target should be multiplied to obtain the residual of mu. It should be set close to the derivative of mu with respect to the target quantity for the entire region that the calculation is intended / expected to cover. If the derivative changes significantly and particularly if it changes its sign on the way to the intended target, the calculation should be split into multiple ones with different mu_residual_factors. No default is given to guard against improper use of the functionality.
+
+# early termination options for curve fitting mu search
+curvefit_termminhist = integer(default=20, min=0)    # terminate only with at least this many entries in history
+curvefit_termdiffthresh = float(default=0.0, min=0)  # terminate only after subsequent mu differences fall below this threshold
+curvefit_termdiffminlen = integer(default=10, min=0)  # terminate only if at least this many of the latest iterations fulfill the subsequent mu difference threshold condition
+curvefit_termntoterrfact = float(default=2.0, min=0)  # terminate only if the impurity filling in the latest iterations is equal to the target filling within error multiplied with this factor
+curvefit_termntotminlen = integer(default=10, min=0)  # terminate only if the impurity filling is equal to the target filling, within error, for at least this many of the latest iterations
+
+
+# DMFT parameters
+DMFTsteps 	= integer(default=1)		# # of DMFT iterations
+StatisticSteps 	= integer(default=0)		# # of statistic steps
+WormSteps       = integer(default=0)            # # of worm steps
+SelfEnergy  = option('dyson', 'improved', 'improved_worm', 'symmetric_improved_worm', default='dyson')
+DMFTerr 	= float(default=None)		# not yet used
+FTType 		= option('none','plain','legendre','none_worm',default='legendre')
+mixing		= float(default=0.0)	 	# mixing between old and new SE
+mixing_strategy = option('linear', 'diis', 'modbroyden', default='linear')
+mixing_diis_history = integer(default=5)
+mixing_history_kept = integer(default=100)     # total size of history kept, but not necessarily used
+mixing_diis_period = integer(default=1)
+mixing_history_skip_delay = integer(default=0, min=0)  # for mixers with history: periodically thin out a block of the most recent history entries to obtain an effective history that only takes into account a uniformly spaced subset of previous steps 
+mixing_history_delay_lastavg = integer(default=3, min=0)  # use last N results of delay period for calculation of the actual residual value entered into the history during thinning out
+
+# input/output parameters
+FileNamePrefix 	= string(default='')		# prefix for output file
+readold 	= integer(default=0)		# start again from nth iteration
+readold_preload_mixer = integer(default=0, min=0)  # try to read up to this many additional previous old iterations to prepopulate the mixer history
+dump_mixer      = string(default=None)
+read_mixer      = string(default=None)
+fileold 	= string(default=None)		# from this file
+ineq_index_old_hyb  = integer(default=1)    # read hybridization from nth inequivalent atom from fileold
+readold_mu      = option('default', 'always', default='default')   # default: uses General.mu as mu if General.EPSN == 0; always: when reading old output, uses mu from last iteration as mu even if General.EPSN == 0
+readold_mapsiw  = option('index', 'iomega', default='index') # index puts the values of the old self-energy at the same index as in the old data, not taking into account the frequencies corresponding to the indices at all. iomega not only reuses the values of the self-energy, but also tries to get them to approx. the same frequency as they belonged to in the frequency grid of the old calculation. Interpolates linearly if necessary. Only relevant if beta has changed.
+readleads	= integer(default=0)		# read leads from leads-file
+leadsfile	= string(default=None)          # leads-file
+write       = option('full', 'normal', 'minimal', default='normal')
+# Symmetry Moves                                                                 
+magnetism   = option('para','ferro','antiferro',default='para')
+#ParaMag     	= integer(default=1)		# flip spins and use symmetry in self-consistency
+#AF	     	= integer(default=0)		# AF self-consistency
+
+# Charge selfconsistency
+ComputeDeltaN   = integer(default=0)            # true/false
+KListFile       = string (default=None)		# alternative filename for case.klist
+
+#GW+DMFT -- EXPERIMENTAL ... in development stage. Will first work only for d-block, not nlig...
+# GW              = integer(default=0)            # if GW=1 then a non-local GW self-energy is being read
+SGWnlFile       = string(default='S_GWnl.dat')  # file that contains the NON-LOCAL GW self-energy
+
+WriteOnlyQuant = force_list(default=None)       # if not None, only quantities whose names are listed here are written to output
+WriteFullLattice = boolean(default=False)       # whether to write full matrices including offdiagonals for lattice gloc; note that this setting is currently off by default due to the possibility of undesirably or unexpectedly large additional output and that the default may be changed and possibly this parameter removed entirely afterwards in a future version 

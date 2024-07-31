@@ -1,0 +1,42 @@
+[General]
+DOS = Bethe
+beta = 10
+mu = 2.0
+half-bandwidth = 2
+NAt = 1
+DMFTsteps = 1
+StatisticSteps = 0
+FTType = legendre
+FileNamePrefix = _MinBethe
+[Atoms]
+[[1]]
+Nd = 1
+Np = 0
+Nlig = 0
+Hamiltonian = Kanamori
+Udd = 2.0
+QuantumNumbers = Nt Szt
+[QMC]
+Nwarmups = 10
+Nmeas = 10
+NCorr = 10
+Ntau = 10
+Niw = 10
+Nftau = 20
+NLegMax = 10
+NLegOrder = 10
+
+# Every comment line beginning with "!TEST" will be interpreted as test script
+# and the parameters will be appended (or overridden)
+
+#!TEST _Bethe_basic
+#!TEST _Bethe_high_Ntau            QMC.Ntau=10000
+#!TEST _Bethe_high_Niw             QMC.Niw=10000
+#!TEST _Bethe_high_Nleg            QMC.NLegMax=500 QMC.NLegOrder=100
+#!TEST _Bethe_DMFT_steps           General.DMFTsteps=2
+#!TEST _Bethe_statistic_steps      General.StatisticSteps=2
+#!TEST _Bethe_density_hamiltonian  Atoms.1.Hamiltonian=Density
+#!TEST _Bethe_quantum_numbers      Atoms.1.QuantumNumbers='Nt'
+#!TEST _Bethe_high_beta            General.beta=500
+#!TEST _Bethe_ferro                General.magnetism=ferro General.DMFTsteps=2
+#!TEST _Bethe_antiferro            General.magnetism=antiferro General.DMFTsteps=2

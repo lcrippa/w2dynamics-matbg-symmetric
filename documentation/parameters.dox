@@ -1,0 +1,307 @@
+/*!
+\page page1 Documenation of the DMFT parameters
+\tableofcontents
+\brief
+<pre>
+!====================================================================!
+!                                                                    !
+!   w2dynamics - Wuerzburg/Vienna strong-coupling impurity solver    !
+!                                                                    !
+! written by Nico Parragh, Markus Wallerberger & Giorgio Sangiovanni !
+!                             21.9.2012                              !
+!                  Phys. Rev. B 86, 155158 (2012)                    !
+!====================================================================!
+</pre>
+This is the documentation for the parameters/parameter file used in the DMFT part of w2dynamics.
+The general syntax of a parameter is: key = value. 
+In the parameter file text after # until the end of line is treated as a comment. 
+If the value is a list you need to put a comma after the last value. e.g.: 1,2,
+
+\section system Values defining the system
+<table>
+
+<tr>
+<td>DOS</td>	
+<td><p>Defines the type of lattice that is used. Currently supported are <code>Bethe, Bethe_in_tau</code> and <code>ReadIn</code>. For <code>Bethe</code> and <code>Bethe_in_tau</code> a semi-circular density of state is used for each bath. If <code>ReadIn</code> is chosen a k-dependent Hamiltonian is read in and used to generate the lattice Greens function.</p>
+<p>mandatory if:	always</p>
+<p>value: 		<code>{ReadIn, Bethe, Bethe_in_tau}</code></p>
+<p>format:		string
+<p>default:		<code>Bethe</code></p>
+<p>example:		<code>DOS=Bethe</code></p>
+</td>
+</tr>
+
+<tr>
+<td>HkFile</td>
+<td><p>Specifies the file containing the H(k) read in if the DOS is set to ReadIn.</p>
+<p>mandatory if: <code>DOS=ReadIn</code>; ignored otherwise</p>
+<p>value: 	<em>filename</em> </p>
+<p>format:	string</p>
+<p>default:	none</td>
+<p>example:	<code>HkFile=Hkdmft.dat</code>
+<p>format of the k-point file:<br> 
+<code>	#k-points #atoms #d-bands #p-bands #ligands per atom<br>
+	#k_x #k_y #k_z<br>
+	#re #im #re #im<br>
+	#re #im #re #im<br>
+	#k_x....<br>
+	.<br></code>
+	</p>
+</td>
+</tr>
+
+<tr>
+<td>beta</td>
+<td><p>Defines the inverse temperature in [eV^-1] used in the simulation.</p>
+<p>mandatory if: 	always</p>
+<p>value: 		#beta </p>
+<p>format:		float</p>
+<p>default:		100.</td>
+<p>example:		<code>beta=100.</code>
+</td>
+</tr>
+
+<tr>
+<td>mu</td>
+<td><p>The chemical potential (mu) of the system.</p>
+<p>mandatory if: 	always</p>
+<p>value:		#chemical potential</p>
+<p>format:		float</p>
+<p>default:		<em>none</em></p>
+<p>example:		<code>mu=2.0</code></p>
+</td>
+</tr>
+
+<tr>
+<td>half-bandwidth</td>
+<td><p>List of the half-bandwidth (D) of each band of a Bethe model system. The Bethe lattice has a semicircular density of states and analytic self-consistency equations are used in the DMFT loop.</p>
+<p>mandatory if: 	<code>DOS = {Bethe, Bethe_in_tau}</code></p>
+<p>value: 		<code> #D,...,</code></p>
+<p>format:		list of float</p>
+<p>default:		<em>none</em></p>
+<p>example: 		<code>half-bandwidth=2.,2.,</code> (2 band system with equal half-bandwidths)</p>
+</td>
+</tr>
+
+</table>
+\section Local Interaction
+<table>
+
+<tr>
+<td>Hamiltonian </td>
+<td><p>Defines the local interaction on the impurity. Possible options are <code>Density</code> and <code>Kanamori</code>. The Density interaction has the form:
+ @f[H_{loc}=\sum_{a} U n_{a,\uparrow} n_{a,\downarrow}
++\sum_{a>b,\sigma} \Big[U' n_{a,\sigma} n_{b,-\sigma} +  (U'-J) n_{a,\sigma}n_{b,\sigma}\Big]@f]
+while the Kanamori interaction has the additional spin-flip and pair-hopping terms for SU(2)-symmetry:
+ @f[H_{loc}=\sum_{a} U n_{a,\uparrow} n_{a,\downarrow}
++\sum_{a>b,\sigma} \Big[U' n_{a,\sigma} n_{b,-\sigma} +  (U'-J) n_{a,\sigma}n_{b,\sigma}\Big]@f]
+@f[
+-\sum_{a\ne b}J(d^\dagger_{a,\downarrow}d^\dagger_{b,\uparrow}d^{\phantom{\dagger}}_{b,\downarrow}d^{\phantom{\dagger}}_{a,\uparrow}
++ d^\dagger_{b,\uparrow}d^\dagger_{b,\downarrow}d^{\phantom{\dagger}}_{a,\uparrow}d^{\phantom{\dagger}}_{a,\downarrow} + h.c.). @f]</p>
+<p>mandatory if: 	always</p>
+<p>value: 		<code>{Density,Kanamori}</code></p>
+<p>format:		string</p>
+<p>default:		<code>Density</code></p>
+<p>example: 		<code>Hamiltonian=Density</code></p>
+</td>
+</tr>
+
+<tr>
+<td>crystalfield</td>
+<td><p>If the system is a Bethe lattice a crystal field can be switched on to seperate the bands.</p>
+<p>mandatory if: 	never</p>
+<p>value: 		<code>#crystalfield,...,</code></p>
+<p>format:		list of float</p>
+<p>default:		<em>none</em></p>
+<p>example: 		<code>crystalfield=0.,1.,</code> (2 band system with one band shifted upward in energy)</p>
+</td>
+</tr>
+
+<tr>
+<td>Udd</td>
+<td><p>Intra-orbital interaction parameter @f$ U @f$ used in the local interaction defined above.</p>
+<p>mandatory if: 	always</p>
+<p>value: 		<code>#Udd</code></p>
+<p>format:		float</p>
+<p>default:		0.0</p>
+<p>example: 		<code>Udd=2.</code> </p>
+</td>
+</tr>
+
+<tr>
+<td>Jdd</td>
+<td><p>Hund parameter @f$ J @f$ used in the local interaction defined above.</p>
+<p>mandatory if: 	more than one orbital present</p>
+<p>value: 		<code>#Jdd</code></p>
+<p>format:		float</p>
+<p>default:		0.0</p>
+<p>example: 		<code>Jdd=0.5</code></p>
+</td>
+</tr>
+
+<tr>
+<td>Vdd</td>
+<td><p>Inter-orbital local interaction parameter @f$ U^\prime @f$ used in the local interaction defined above.</p>
+<p>mandatory if: 	more than one orbital present</p>
+<p>value: 		<code>#Vdd</code></p>
+<p>format:		float</p>
+<p>default:		0.0</p>
+<p>example: 		<code>Vdd=1.</code> </p>
+</td>
+</tr>
+
+</table>
+\section QMC 
+<table>
+
+<tr>
+<td> Nwarmups </td>
+<td> <p> The number of steps before starting the measurement in the QMC. </p>
+<p>mandatory if: 	always</p>
+<p>value: 		<code>#Nwarmups</code></p>
+<p>format:		integer</p>
+<p>default:		<em>none</em></p>
+<p>example: 		<code>Nwarmups=10000</code> </p></td>
+</tr>
+
+<tr>
+<td> Nmeas </td>
+<td><p>Number of measurements in the QMC of each quantity</p>
+<p>mandatory if:	always</p>
+<p>value:		<code>#Nmeas</code></p>
+<p>format:		integer</p>
+<p>default:		<em>none</em></p>
+<p>example:		<code>NMeas=10000</code></p></td>
+</tr>
+
+<tr>
+<td> NCorr 		</td>
+<td><p> Number of steps bewteen measurements (~autocorrelation time). A reasonable approxiamtion is: #(mean expansion order)/#(probaility of acceptance)</p> 
+<p>mandatory if:	always</p>
+<p>value:		<code>#NCorr</code></p>
+<p>format:		integer</p>
+<p>default:		100</p>
+<p>example:		<code>NCorr=100</code></p></td>
+</tr>
+
+<tr>
+<td>truncation		</td>
+<td><p> Number of multiplets used in the outer truncation of the local trace.</p> 
+<p>mandatory if:	always</p>
+<p>value:		<code>#truncation</code></p>
+<p>format:		integer</p>
+<p>default:		1</p>
+<p>example:		<code>truncation=1</code></p></td>
+</tr>
+
+</table>
+\section Discretization
+<table>
+
+<tr>
+<td>Ntau </td>
+<td><p>The discretization on the imaginary time axis used to store the measurement of @f$G(\tau)@f$. Applicable to gtau in the output file.</p>
+<p>mandatory if:	always</p>
+<p>value:		<code>#Ntau</code></p>
+<p>format:		integer</p>
+<p>default:		1000</p>
+<p>example:		<code>Ntau=1000</code></p></td>
+</tr>
+
+<tr>
+<td>Niw    	</td>
+<td><p>The number of positive Matsubara frequencies used for @f$\Sigma(i\omega)@f$ and @f$G(i\omega)@f$.</p>
+<p>mandatory if:	always</p>
+<p>value:		<code>#Niw</code></p>
+<p>format:		integer</p>
+<p>default:		2000</p>
+<p>example:		<code>Niw=2000</code></p></td>
+</tr>
+
+<tr>
+<td>totdens 	</td>
+<td><p>The number of electrons per atom in the system. Used when the chemical potential is adjusted and for calculating the double counting correction.</p>
+<p>mandatory if:	<code>DOS=Bethe</code>:chemical potential is variable; <br>
+	<code>DOS=ReadIn</code>: always</p>
+<p>value:		<code>#electrons/atom</code></p>
+<p>format:		float</p>
+<p>default:		<em>none</em></p>
+<p>example:		<code>totdens=2.</code></p></td>
+</tr>
+
+<tr>
+<td>EPSN	</td>
+<td><p>Defines the upper error between the number of electrons the system should contain and the number of electrons the system contain as calculated by w2dynamic.</p>
+<p>mandatory if:	chemical potential is variable</p>
+<p>value:		<code>#EPSN</code></p>
+<p>format:		float</p>
+<p>default:		<em>none</em></p>
+<p>example:		<code>EPSN=0.001</code></p></td>
+</tr>
+
+</table>
+\section DMFT
+<table>
+
+<tr>
+<td>DMFTsteps 	</td>
+<td><p>The number of DMFT steps the code performs.</p>
+<p>mandatory if:	DMFT steps are required</p>
+<p>value:		<code>#DMFTsteps</code></p>
+<p>format:		integer</p>
+<p>default:		0</p>
+<p>example:		<code>DMFTsteps=0</code></p></td>
+</tr>
+
+
+</table>
+\section IO
+<table>
+
+<tr>
+<td>FileNamePrefix</td>
+<td><p>A prefix is attached before the default filename of the output file containing the time and date the calculation started. This parameter defines the prefix.</p>
+<p>mandatory if:	never</p>
+<p>value:		<em>prefix</em></p>
+<p>format:		string</p>
+<p>default:		''</p>
+<p>example:		<code>FileNamePrefix=SrVO</code></p></td>
+</tr>
+
+<tr>
+<td>readold 	</td>
+<td><p>Specifies which iteration of an old file should be used to restart a calculaton. No file is read if this parameter is set to 0. If this parameter is set to -1 the last iteration of a file is used.</p>
+<p>mandatory if:	an old calculation should be continued</p>
+<p>value:		<code>#readold</code></p>
+<p>format:		integer</p>
+<p>default:		0</p>
+<p>example:		<code>readold=3</code></p></td>
+</tr>
+
+<tr>
+<td>fileold 	</td>
+<td><p>This parameter specifies the name of the file which should be read for a continuation of an old calculation.
+<p>mandatory if:	an old calculation should be continued</p>
+<p>value:		<em>filename</em></p>
+<p>format:		string</p>
+<p>default:		<em>none</em></p>
+<p>example:		<code>fileold=old.hdf5</code></p></td>
+</tr>
+
+
+</table>
+\section Symmetries
+<table>
+
+<tr>
+<td>ParaMag     	</td>
+<td><p>This parameter specifies if a system should be treated as paramagnetic (1) or not paramagnetic (0). If so the symmetry is enforced.</p>
+<p>mandatory if:	always</p>
+<p>value:		<code>{0,1}</code></p>
+<p>format:		integer</p>
+<p>default:		<code>1</code></p>
+<p>example:		<code>ParaMag=1</code></p></td>
+</tr>
+
+</table>
+*/

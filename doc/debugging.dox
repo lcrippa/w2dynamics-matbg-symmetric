@@ -1,0 +1,38 @@
+/*!
+
+ \page page2 W2Dynamics: W\"urzburg/Vienna CT-Hyb implementation
+ 
+ \section intro Introduction
+ An implementation of the strong-coupling QMC algorithm using Lanczos in the
+ local trace. This will enable us to perform calculations for d and f electron
+ systems and full Coulomb interaction (or so we think).
+
+ \section debug Debugging
+ \subsection efence Electric Fence
+ One good idea if memory allocation errors are a possible error is to link the
+ library efence into the program. This will create non-accessible memory
+ blocks before/after the allocated blocks of memory and a segmentation fault
+ will occur whenever they are accessed.
+
+ \subsection valgrind Valgrind
+ It is very useful to run the program with \c valgrind {executable} to search
+ for memory leaks. The command I currently use is
+ \verbatim
+ valgrind --leak-check=full --track-origins=yes --show-reachable=yes \
+          --num-callers=50  CTQMC.exe
+ \endverbatim
+
+ \subsection gprof Gprof
+ If one compiles the program with \c -pg flag in the compiling and linking
+ stage one obtains a program which writes useful profiling information into
+ the file gmon. This can be converted to sth human readable by the command
+ \verbatim
+  gprof exec gmon
+ \endverbatim
+
+ \subsection ltrace ltrace
+ One can run the program with ltrace -c CTQMC.exe to obtain a summary of
+ library calls.
+
+
+*/

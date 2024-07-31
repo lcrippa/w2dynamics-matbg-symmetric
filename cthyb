@@ -1,0 +1,388 @@
+#!/usr/bin/env python
+"""Program for single-shot QMC runs"""
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+import os
+import os.path
+import sys
+import time
+import optparse
+import warnings
+from pathlib import Path
+
+import numpy as np
+
+import w2dyn.auxiliaries as aux
+from w2dyn.auxiliaries import transform as tf
+from w2dyn.auxiliaries import hdfout
+from w2dyn.auxiliaries import config
+from w2dyn.auxiliaries import input as aux_input
+from w2dyn.auxiliaries.utilities import diagonal_covariance, check_stop_iteration
+
+from w2dyn.dmft import impurity
+from w2dyn.dmft import orbspin
+from w2dyn.dmft import worm
+
+def git_revision():
+    try:
+        return os.environ["DMFT_GIT_REVISION"]
+    except KeyError:
+        return None
+
+# MPI initialisation
+use_mpi = True
+if use_mpi:
+    from w2dyn.dmft import mpi
+    mpi_comm = mpi.MPI_COMM_WORLD
+    mpi_rank = mpi_comm.Get_rank()
+    mpi_size = mpi_comm.Get_size()
+
+    def mpi_abort(type, value, traceback):
+        Path(os.environ["SLURM_JOB_ID"] + ".stop").touch()
+        sys.__excepthook__(type, value, traceback)
+        sys.stderr.write("Error: Exception at top-level on rank %s "
+                         "(see previous output for error message)\n" %
+                         mpi_rank)
+        sys.stderr.flush()
+        sys.exit(0)
+
+    sys.excepthook = mpi_abort
+
+    def mpi_on_root(func):
+        """Executes a function only on the root node"""
+        if mpi_rank == 0: result = func()
+        else: result = None
+        return mpi_comm.bcast(result)
+else:
+    mpi_comm = None
+    mpi_rank = 0
+    mpi_size = 1
+    mpi_on_root = lambda func: func()
+
+
+mpi_iamroot = mpi_rank == 0
+
+def my_show_warning(message, category, filename, lineno, file=None, line=None):
+    if not mpi_iamroot: return
+    message = str(message).replace("\n", "\n\t")
+    sys.stderr.write("\nWARNING: %s\n\t%s triggered at %s:%s\n\n" %
+                     (message, category.__name__, filename, lineno))
+
+warnings.showwarning = my_show_warning
+
+if mpi_iamroot:
+    log = lambda s, *a: sys.stderr.write(str(s) % a + "\n")
+    rerr = sys.stderr
+else:
+    log = lambda s, *a: None
+    rerr = open(os.devnull, "w")
+
+# Print banners and general information
+log(aux.BANNER, aux.CODE_VERSION_STRING, aux.CODE_DATE)
+log("One-shot CT-HYB calculation")
+log("Running on %d core%s", mpi_size, " s"[mpi_size > 1])
+log("Calculation started %s", time.strftime("%c"))
+
+# Parse positional arguments
+key_value_args, argv = config.parse_pairs(sys.argv[1:])
+parser = optparse.OptionParser(usage="%prog [key=[value] ...] [FILE ...]",
+                               description=__doc__,
+                               version="%prog " + aux.CODE_VERSION_STRING)
+prog_options, argv = parser.parse_args(argv)
+if len(argv) == 0:
+    log("No config file name given, using `Parameters.in' ...")
+    cfg_file_name = 'Parameters.in'
+elif len(argv) == 1:
+    cfg_file_name = argv[0]
+else:
+    parser.error("Expecting exactly one filename")
+
+cfg =  mpi_on_root(lambda: config.get_cfg(cfg_file_name, key_value_args,
+                                          err=rerr))
+
+del cfg_file_name, key_value_args, argv, parser
+# Finished argument parsing, cfg now contains the configuration for the run
+
+# create output file and write metadata
+log("Writing basic data for the run ...")
+output = hdfout.HdfOutput(cfg, git_revision(), mpi_comm=mpi_comm)
+
+# compute non-interacting chemical potential
+log("Reading configuration ...")
+natoms = cfg["General"]["NAt"]
+niw = 2*cfg["QMC"]["Niw"]
+mu = cfg["General"]["mu"]
+fix_mu = cfg["General"]["EPSN"] > 0
+
+if natoms != 1:
+    raise ValueError("Single shot calculation must be with one atom")
+if fix_mu:
+    raise ValueError("No fixing of chemical potential (set EPSN = 0)!")
+
+# generate atoms
+log("Generating atom ...")
+norbitals = cfg["Atoms"].values()[0]["Nd"]
+atom = config.atomlist_from_cfg(cfg, norbitals)[0]
+if atom.np > 0:
+    raise ValueError("No p bands allowed in single-shot (set Np = 0)!")
+output.ineq_list = [atom]
+
+beta = cfg["General"]["beta"]
+#iwf = tf.matfreq(beta, 'fermi', niw)
+#nftau = cfg["QMC"]["Nftau"]
+#tauf = np.arange(nftau)*beta/(nftau - 1.0)
+paramag = cfg["General"]["magnetism"] == "para"
+
+# Initialise solver
+log("Initialising solver ...")
+Nseed = cfg["QMC"]["NSeed"] + mpi_rank
+solver = impurity.CtHybSolver(cfg, Nseed, 0,0,0, not use_mpi, mpi_comm)
+
+#FIXME: hack
+cfg["QMC"]["FTType"]=cfg["General"]["FTType"]
+
+# Generating impurity problem
+log("Generating impurity problem ...")
+muimp = (mu
+         * np.eye(norbitals)[:, np.newaxis, :, np.newaxis]
+         * np.eye(2)[np.newaxis, :, np.newaxis, :])
+if atom.crystalfield is not None:
+    muimp -= atom.crystalfield
+
+if cfg["General"]["muimpFile"] is not None:
+    muimp = mpi_on_root(lambda: aux_input.read_muimp(cfg["General"]["muimpFile"]))
+    assert muimp.shape == (norbitals, 2, norbitals, 2)
+
+if cfg["General"]["DOS"] == "EDcheck":
+    iwf = tf.matfreq(beta, 'fermi', niw)
+    nftau = cfg["QMC"]["Nftau"]
+    tauf = np.linspace(0., beta, num=nftau, endpoint=True)
+    diag, epsk, vki = mpi_on_root(lambda: aux_input.read_epsk_vk_file("epsk", "Vk"))
+    fiw, ftau = tf.hybr_from_sites(epsk, vki, iwf, tauf, beta)
+    fmom = vki.conj().T.dot(vki)
+
+    # convert it to DMFT convention
+    fiw = fiw.transpose(2, 0, 1).reshape(niw, norbitals, 2, norbitals, 2)
+    ftau = ftau.transpose(2, 0, 1).reshape(nftau, norbitals, 2, norbitals, 2)
+    fmom = fmom.reshape(norbitals, 2, norbitals, 2)
+    _eye = np.eye(2 * norbitals).reshape(norbitals, 2, norbitals, 2)
+    fiw = fiw.conj()
+    g0inviw = 1j * iwf[:,None,None,None,None] * _eye + muimp - fiw.conj()
+    imp_problem = impurity.ImpurityProblem(
+                    beta, g0inviw, fiw, fmom, ftau,
+                    muimp, atom.dd_int, None, None, atom.symmetry_moves,
+                    paramag)
+
+elif cfg["General"]["DOS"] == "readDelta":
+    # try to load a diagonal hybridisation; if fails, load a offidagonal
+    if cfg["QMC"]["offdiag"] == 0:
+        old_iter = cfg["General"]["readold"]
+        if old_iter != 0:
+            fiw, ftau, niw, iwf, nftau, tauf = \
+                hdfout.HdfOutput.load_old_hybridization(
+                    cfg["General"]["fileold"], old_iter)
+            # Pick the ineq from which fiw and ftau are read
+            if cfg["General"]["ineq_index_old_hyb"] < 1:
+                raise ValueError("ineq_index_old_hyb must be >= 1")
+            i_ineq = cfg["General"]["ineq_index_old_hyb"] - 1
+            fiw = fiw[i_ineq]
+            ftau = ftau[i_ineq]
+        else:
+            fiw, ftau, niw, iwf, nftau, tauf = mpi_on_root(
+                lambda: aux_input.read_Delta_iw_tau(
+                    "deltaiw", "deltatau", beta))
+            # convert it to DMFT convention
+            fiw = fiw.reshape(niw, norbitals, 2)
+            ftau = ftau.reshape(nftau, norbitals, 2)
+        fiw = orbspin.promote_diagonal(fiw)
+        ftau = orbspin.promote_diagonal(ftau)
+    else:
+        old_iter = cfg["General"]["readold"]
+        if old_iter != 0:
+            fiw, ftau, niw, iwf, nftau, tauf = \
+                hdfout.HdfOutput.load_old_hybridization_full(
+                    cfg["General"]["fileold"], old_iter)
+            # Pick the ineq from which fiw and ftau are read
+            if cfg["General"]["ineq_index_old_hyb"] < 1:
+                raise ValueError("ineq_index_old_hyb must be >= 1")
+            i_ineq = cfg["General"]["ineq_index_old_hyb"] - 1
+            fiw = fiw[i_ineq]
+            ftau = ftau[i_ineq]
+        else:
+            fiw, ftau, niw, iwf, nftau, tauf = mpi_on_root(
+                lambda: aux_input.read_Delta_iw_tau_full(
+                    "deltaiw", "deltatau", beta, norbitals))
+            # convert it to DMFT convention
+            fiw = fiw.reshape(niw, norbitals, 2, norbitals, 2)
+            ftau = ftau.reshape(nftau, norbitals, 2, norbitals, 2)
+
+    _eye = np.eye(2 * norbitals).reshape(norbitals, 2, norbitals, 2)
+    #print "fiw.shape", fiw.shape
+    #print "ftau.shape", ftau.shape
+    #print "iwf.shape", iwf.shape
+    #print "tauf.shape", tauf.shape
+
+    g0inviw = 1j * iwf[:,None,None,None,None] * _eye + muimp - fiw.conj()
+    imp_problem = impurity.ImpurityProblem(
+                    beta, g0inviw, fiw, None, ftau,
+                    muimp, atom.dd_int, None, None, atom.symmetry_moves,
+                    paramag)
+                           
+else:
+    raise ValueError("Lattice type incompatible with single-shot")
+
+# Statistics loop
+if cfg["General"]["DMFTsteps"] > 0:
+    raise ValueError("Cannot do DMFT for single-shot, use StatisticSteps!")
+
+stat_iterations = cfg["General"]["StatisticSteps"]
+worm_iterations = cfg["General"]["WormSteps"]
+compute_fourpnt = cfg["QMC"]["FourPnt"]
+siw_method = cfg["General"]["SelfEnergy"]
+smom_method = cfg["General"]["siw_moments"]
+
+if cfg["QMC"]["ReuseMCConfig"] != 0:
+    mccfgs = []
+
+# Statistic/Worm steps loop
+for iter_no in range(stat_iterations+worm_iterations):
+    # figure out type of iteration
+    iter_time1 = time.time()
+    if iter_no < stat_iterations:
+        iter_type = "stat"
+        iter_no -= worm_iterations
+        if mpi_iamroot:
+            output.open_iteration("stat", iter_no)
+    else:
+        iter_type = "worm"
+        iter_no -= stat_iterations
+        if mpi_iamroot:
+            output.open_iteration("worm", iter_no)
+
+    log("Writing impurity problem ...")
+    output.write_quantity("fiw",   [fiw])
+    output.write_quantity("fiw-full", [fiw])
+    #output.write_quantity("fmom",  [fmom])
+    output.write_quantity("ftau",  [ftau])
+    output.write_quantity("ftau-full",  [ftau])
+    output.write_quantity("g0iw",  [orbspin.invert(g0inviw)])
+    output.write_quantity("g0iw-full",  [orbspin.invert(g0inviw)])
+    output.write_quantity("muimp", [muimp])
+ 
+    if iter_type == "stat":
+        log("Solving impurity problem ...")
+
+        solver.set_problem(imp_problem, compute_fourpnt)
+        if cfg["QMC"]["ReuseMCConfig"] != 0:
+           if iter_no > 0:
+              mccfgcontainer = [mccfgs.pop(0)]
+           else:
+              mccfgcontainer = []
+           result = solver.solve(iter_no, mccfgcontainer)
+           result_worm = None
+           mccfgs.append(mccfgcontainer[0])
+        elif (cfg['QMC']['WormMeasGiw'] != 0
+              or cfg['QMC']['WormMeasGSigmaiw'] != 0
+              or cfg['QMC']['WormMeasQQ'] != 0):
+           result, result_worm = solver.solve_worm(iter_no, log_function=log)
+        else:
+           result = solver.solve(iter_no)
+           result_worm = None
+ 
+        result.postprocessing(siw_method, smom_method,
+                              0
+                              if not cfg["QMC"]["FTGiwGtau"]
+                              else cfg["QMC"]["Ntau"],
+                              np.mean(np.diagonal(np.diagonal(muimp,
+                                                              axis1=0,
+                                                              axis2=2),
+                                                  axis1=0,
+                                                  axis2=1))
+                              if cfg["QMC"]["FTGiwGtau"]
+                              else None)
+        output.write_quantity("giw", [result.giw.mean()])
+        output.write_quantity("siw", [result.siw.mean()])
+        output.write_quantity("smom", [result.smom.mean()])
+        output.write_impurity_result(0, result.other)
+        if result_worm is not None:
+            output.write_impurity_result(0, result_worm.other)
+
+        if cfg["QMC"]["WriteCovMeanGiw"]:
+            output.write_impurity_result(0,
+                                         {'giw-cov':
+                                          diagonal_covariance(result.giw)})
+        if cfg["QMC"]["WriteCovMeanSigmaiw"]:
+            output.write_impurity_result(0,
+                                         {'siw-cov':
+                                          diagonal_covariance(result.siw)})
+
+        # write quantities not contained in result.other after
+        # pulling band and spin dimensions to the front
+        output.write_impurity_result(
+            0,
+            {'siw-full': result.siw
+             .apply(lambda x: np.transpose(x, (1, 2, 3, 4, 0)), inplace=True),
+             'giw-full': result.giw
+             .apply(lambda x: np.transpose(x, (1, 2, 3, 4, 0)), inplace=True),
+             'smom-full': result.smom
+             .apply(lambda x: np.transpose(x, (1, 2, 3, 4, 0)), inplace=True),
+             })
+    
+    if iter_type == "worm":
+        log("Solving impurity problem by worm sampling...")
+
+        #empty mc configuration for first run
+        mc_cfg_container = []
+        worm_sector = worm.get_sector_index(cfg['QMC'])
+
+        log("Sampling components of worm sector %d ...", worm_sector)
+        
+        #if WormComponents not specified -> sample all
+        if not cfg['QMC']['WormComponents']:
+            log("Sampling all components.")
+            if worm_sector in [2, 3, 10]:
+                component_list = range(1, imp_problem.nflavours**2 + 1)
+            else:
+                component_list = range(1, imp_problem.nflavours**4 + 1)
+        else:
+            log("Sampling components from configuration file")
+            #only integer components 1,... are considered
+            component_list = [int(s) for s in cfg['QMC']['WormComponents'] if int(s)>0]
+
+        for icomponent in component_list:
+            log("Sampling component %d", icomponent)
+            solver.set_problem(imp_problem, compute_fourpnt)
+            result_gen, result_comp = solver.solve_comp_stats(iter_no, worm_sector, icomponent, mc_cfg_container)
+
+            # only write result if component-list is user-specified
+            # or when eta>0, i.e. the component exists
+            worm_eta = result_comp.other['worm-eta/{:05}'.format(icomponent)].mean()
+            if (cfg["QMC"]["WormComponents"] or np.amax(worm_eta) > 0.):
+                output.write_impurity_result(0, result_comp.other)
+                output.write_impurity_result(0, result_gen.other)
+
+            log("Done with component {}".format(icomponent))
+
+    if solver.abort:
+        log("CT-HYB was aborted ...")
+        break
+
+    if cfg["QMC"]["WriteMCConfig"]:
+        for icfg, mccfg in enumerate(mccfgs):
+            mccfg.save_to_file("mccfg_{procno:d}.{icfg:d}.npz"
+                               .format(procno=(mpi_rank if use_mpi
+                                               else 1),
+                                       icfg=icfg))
+
+    if mpi_iamroot:
+        output.close_iteration(iter_type, iter_no)
+
+    iter_time2 = time.time()
+    log("Time of iteration no. %d: %g sec", iter_no+1, iter_time2 - iter_time1)
+
+    if mpi_on_root(lambda: check_stop_iteration(cfg, iter_time2 - iter_time1)):
+        break
+
+log("Finished calculation.")
+
+

@@ -1,0 +1,36 @@
+[General]
+beta = 10
+DOS = ReadInSO
+HkFile = TinyDSO.hk
+NAt = 1
+mu = 0.208359
+totdens = 0
+DMFTsteps = 1
+StatisticSteps = 0
+FileNamePrefix = ReadinSO
+#ParaMag = 1
+[Atoms]
+[[1]]
+Hamiltonian = Density
+Udd = 5.0
+Udp = 0.0
+Upp = 0.0
+Jdd = 0.8
+Vdd = 3.0
+QuantumNumbers = Nt Szt
+[QMC]
+Nwarmups = 10
+Nmeas = 10
+NCorr = 10
+Ntau = 10
+Niw = 10
+
+
+# Every comment line beginning with "!TEST" will be interpreted as test script
+# and the parameters will be appended (or overridden)
+
+#!TEST _ReadInSO_basic
+#!TEST _ReadInSO_Kanamori_Hamiltonian   Atoms.1.Hamiltonian=Kanamori            
+#!TEST _ReadInSO_statistic_steps        General.StatisticSteps=1
+#!TEST _ReadInSO_DMFT_steps             General.DMFTsteps=2
+#!TEST _ReadInSO_find_mu                General.totdens=1

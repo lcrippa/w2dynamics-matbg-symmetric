@@ -1,0 +1,174 @@
+stages:
+  - build
+  - test
+
+.CTQMC_build_template: &ctqmc_definition
+  stage: build
+  except:
+    changes:
+      - .gitignore
+      - CITATION
+      - README.md
+      - LICENSE
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make CTQMC
+
+.lint_template: &lint_definition
+  stage: test
+  allow_failure: true
+  except:
+    changes:
+      - .gitignore
+      - CITATION
+      - README.md
+      - LICENSE
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make CTQMC MAXENT
+    - cd ..
+    - cmake -P PylintCI.txt
+
+.TEST_template: &test_definition
+  stage: test
+  except:
+    changes:
+      - .gitignore
+      - CITATION
+      - README.md
+      - LICENSE
+  script:
+    - cmake -E make_directory build
+    - cd build
+    - cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RELEASE ..
+    - cmake --build . --target all --config Release
+    - ctest --output-on-failure -O log.txt
+    - cat log.txt | grep "tests passed" | cut -d " " -f 1
+
+.MAXENT_build_template: &maxent_definition
+  stage: build
+  except:
+    changes:
+      - .gitignore
+      - CITATION
+      - README.md
+      - LICENSE
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make MAXENT
+
+CTQMC_Ubuntu_bionic:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/ubuntu:bionic-beaver-gfortran-lapack-fftw-hdf5-scipy3
+    <<: *ctqmc_definition
+
+CTQMC_Buster:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-gfortran-lapack-fftw-hdf5-scipy3
+    <<: *ctqmc_definition
+
+CTQMC_Bullseye:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:bullseye-gfortran-blas-lapack-fftw-hdf5-scipy3
+    <<: *ctqmc_definition
+
+CTQMC_Buster_PGI1910:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-pgi1910-cmake-blas-lapack-fftw-hdf5-scipy3 
+    stage: build
+    except:
+      changes:
+        - .gitignore
+        - CITATION
+        - README.md
+        - LICENSE
+    script:
+      - cmake -E make_directory build
+      - cd build
+      - export PGI=/opt/pgi
+      - export PATH=/opt/pgi/linux86-64/19.10/bin:$PATH
+      - cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_Fortran_COMPILER=pgfortran -DCMAKE_CXX_COMPILER=pgc++ ..
+      - cmake --build . --target CTQMC --config Release
+
+#CTQMC_Bullseye_PGI-21-03:
+#    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:bullseye-pgi-21-03
+#    stage: build
+#    except:
+#      changes:
+#        - .gitignore
+#        - CITATION
+#        - README.md
+#        - LICENSE
+#    script:
+#      - apt-get update && apt-get install -y python3-scipy libopenblas-dev libfftw3-dev python3-pip libhdf5-dev python3-h5py python3-mpi4py
+#      - cmake -E make_directory build
+#      - cd build
+#      - export PATH=/opt/nvidia/hpc_sdk/Linux86-64/21.3/compilers/bin:$PATH
+#      - cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_Fortran_COMPILER=pgfortran -DCMAKE_CXX_COMPILER=pgc++ ..
+#      - cmake --build . --target CTQMC --config Release
+
+MAXENT_Ubuntu_bionic:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/ubuntu:bionic-beaver-gfortran-lapack-fftw-hdf5-scipy3
+    <<: *maxent_definition
+
+MAXENT_Buster:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-gfortran-lapack-fftw-hdf5-scipy3
+    <<: *maxent_definition
+
+MAXENT_Bullseye:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:bullseye-gfortran-blas-lapack-fftw-hdf5-scipy3
+    <<: *maxent_definition
+
+MAXENT_Buster_PGI1910:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-pgi1910-cmake-blas-lapack-fftw-hdf5-scipy3
+    stage: build
+    except:
+      changes:
+        - .gitignore
+        - CITATION
+        - README.md
+        - LICENSE
+    script:
+      - cmake -E make_directory build
+      - cd build
+      - export PGI=/opt/pgi
+      - export PATH=/opt/pgi/linux86-64/19.10/bin:$PATH
+      - cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_Fortran_COMPILER=pgfortran -DCMAKE_CXX_COMPILER=pgc++ ..
+      - cmake --build . --target MAXENT --config Release
+
+Lint_Python3:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-gfortran-lapack-fftw-hdf5-scipy3
+    <<: *lint_definition
+
+Test_Ubuntu_bionic:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/ubuntu:bionic-beaver-gfortran-lapack-fftw-hdf5-scipy3
+    <<: *test_definition
+
+Test_Buster:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-gfortran-lapack-fftw-hdf5-scipy3
+    <<: *test_definition
+
+Test_Bullseye:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:bullseye-gfortran-blas-lapack-fftw-hdf5-scipy3
+    <<: *test_definition
+
+Test_Buster_PGI1910:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-pgi1910-cmake-blas-lapack-fftw-hdf5-scipy3 
+    stage: test
+    except:
+      changes:
+        - .gitignore
+        - CITATION
+        - README.md
+        - LICENSE
+    script:
+      - cmake -E make_directory build
+      - cd build
+      - export PGI=/opt/pgi
+      - export PATH=/opt/pgi/linux86-64/19.10/bin:$PATH
+      - cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_Fortran_COMPILER=pgfortran -DCMAKE_CXX_COMPILER=pgc++ ..
+      - cmake --build . --target all --config Release
+      - ctest --output-on-failure -O log.txt
+      - cat log.txt | grep "tests passed" | cut -d " " -f 1

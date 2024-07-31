@@ -1,0 +1,42 @@
+[General]
+beta = 10
+DOS = ReadIn
+HkFile = TinyD.hk
+NAt = 1
+half-bandwidth = 2
+mu = 0.208359
+totdens = 0
+DMFTsteps = 1
+StatisticSteps = 0
+FileNamePrefix = Readin
+magnetism = para
+[Atoms]
+[[1]]
+Nd = 1
+Np = 1
+Nlig = 1
+Hamiltonian = Density
+Udd = 5.0
+Udp = 0.0
+Upp = 0.0
+Jdd = 0.8
+Vdd = 3.0
+QuantumNumbers = Nt Szt
+[QMC]
+Nwarmups = 10
+Nmeas = 10
+NCorr = 10
+Ntau = 10
+Niw = 10
+
+# Every comment line beginning with "!TEST" will be interpreted as test script
+# and the parameters will be appended (or overridden)
+
+#!TEST _ReadIn_basic
+#!TEST _ReadIn_Kanamori_Hamiltonian   Atoms.1.Hamiltonian=Kanamori            
+#!TEST _ReadIn_statistic_steps        General.StatisticSteps=1
+#!TEST _ReadIn_DMFT_steps             General.DMFTsteps=2
+#!TEST _ReadIn_find_mu                General.totdens=1
+#!TEST _ReadIn_ferro                  General.magnetism=ferro General.DMFTsteps=2
+#!TEST _ReadIn_antiferro              General.magnetism=antiferro General.DMFTsteps=2
+#!TEST _ReadIn_donly                  Atoms.1.Nd=2 Atoms.1.Np=0 Atoms.1.Nlig=0
